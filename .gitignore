@@ -1,0 +1,20 @@
+# Зависимости
+node_modules/
+.pnpm-store/
+
+# Логи
+*.log
+npm-debug.log*
+
+# Сборка
+dist/
+dist-ssr/
+*.local
+
+# Редакторы
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
