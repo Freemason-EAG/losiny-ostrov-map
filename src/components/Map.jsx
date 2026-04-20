@@ -43,6 +43,7 @@ const Map = () => {
                 id: 'losiny-boundary-fill',
                 type: 'fill',
                 source: 'losiny-boundary',
+                filter: ['==', ['get', 'zonelineco'], 8], // только код 8
                 paint: {
                     'fill-color': '#4caf50',
                     'fill-opacity': 0.3
