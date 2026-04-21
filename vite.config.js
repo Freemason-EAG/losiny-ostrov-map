@@ -58,6 +58,21 @@ export default defineConfig({
             type: 'image/png'
           }
         ]
+      },
+      workbox: { // для оффлайн работы 
+        globPatterns: ['**/*.{js,css,html,ico,svg,json,geojson}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/demotiles\.maplibre\.org\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'maplibre-tiles',
+              expiration: { 
+                maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 
+              }
+            }
+          }
+        ]
       }
     })
   ]
