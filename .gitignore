@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 
 #others
-raw-data/
+archive/
