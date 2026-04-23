@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import useGeolocation from '../hooks/useGeolocation'
+import { mapLayers } from '../config/mapLayers'
 
 const Map = () => {
     const mapContainer = useRef(null)
     const map = useRef(null)
     const [loadError, setLoadError] = useState(false)
+
     const { location, error, loading } = useGeolocation()
     const markerRef = useRef(null)
 
@@ -25,13 +27,13 @@ const Map = () => {
             doubleClickZoom: true,
         })
 
-        map.current.on('error', () => {
-            setLoadError(true)
-        })
+        map.current.on('error', () => setLoadError(true))
 
         map.current.on('load', async () => {
 
-            // --- OSM подложка ---
+            // =========================
+            // OSM BASEMAP
+            // =========================
             map.current.addSource('osm-basemap', {
                 type: 'raster',
                 tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
@@ -43,137 +45,52 @@ const Map = () => {
                 id: 'osm-basemap-layer',
                 type: 'raster',
                 source: 'osm-basemap',
-                minzoom: 0,
-                maxzoom: 19,
                 paint: {
-                    'raster-opacity': 0.5,
-                }
-            })
-
-            // --- фон ---
-            map.current.addLayer({
-                id: 'color-overlay',
-                type: 'background',
-                paint: {
-                    'background-color': '#F5F5F5',
-                    'background-opacity': 0.5,
+                    'raster-opacity': 0.5
                 }
             })
 
             // =========================
-            // 🟢 ЛОСИНЫЙ ОСТРОВ (общий)
+            // LOAD LAYERS FROM CONFIG
             // =========================
-            try {
-                const response = await fetch('/data/losiny-boundary.geojson')
-                const boundaryData = await response.json()
 
-                map.current.addSource('losiny-boundary', {
-                    type: 'geojson',
-                    data: boundaryData,
-                })
+            const loadGeoJSONLayer = async (layer) => {
+                try {
+                    const res = await fetch(layer.source)
+                    const data = await res.json()
 
-                map.current.addLayer({
-                    id: 'losiny-boundary-fill',
-                    type: 'fill',
-                    source: 'losiny-boundary',
-                    paint: {
-                        'fill-color': '#4caf50',
-                        'fill-opacity': 0.2
-                    }
-                })
+                    map.current.addSource(layer.id, {
+                        type: 'geojson',
+                        data
+                    })
 
-                map.current.addLayer({
-                    id: 'losiny-boundary-line',
-                    type: 'line',
-                    source: 'losiny-boundary',
-                    paint: {
-                        'line-color': '#2e7d32',
-                        'line-width': 2,
-                        'line-opacity': 0.8
-                    }
-                })
-
-            } catch (err) {
-                console.warn('Ошибка загрузки Лосиного острова:', err)
-                setLoadError(true)
+                    map.current.addLayer({
+                        id: `${layer.id}-layer`,
+                        type: layer.type,
+                        source: layer.id,
+                        paint: layer.paint
+                    })
+                } catch (err) {
+                    console.warn(`Ошибка загрузки слоя ${layer.id}`, err)
+                }
             }
 
-            // =========================
-            // 🟦 МОСКОВСКАЯ ЧАСТЬ
-            // =========================
-            try {
-                const response = await fetch('/data/losiny_ostrov_moscow.geojson')
-                const moscowData = await response.json()
+            const allLayers = [
+                ...Object.values(mapLayers.core),
+                ...Object.values(mapLayers.areas),
+                ...Object.values(mapLayers.paths),
+                ...Object.values(mapLayers.polygons),
+            ]
 
-                map.current.addSource('losiny-moscow', {
-                    type: 'geojson',
-                    data: moscowData,
-                })
-
-                map.current.addLayer({
-                    id: 'losiny-moscow-fill',
-                    type: 'fill',
-                    source: 'losiny-moscow',
-                    paint: {
-                        'fill-color': '#2196f3',
-                        'fill-opacity': 0.35
-                    }
-                })
-
-                map.current.addLayer({
-                    id: 'losiny-moscow-line',
-                    type: 'line',
-                    source: 'losiny-moscow',
-                    paint: {
-                        'line-color': '#1565c0',
-                        'line-width': 2,
-                        'line-opacity': 0.9
-                    }
-                })
-
-            } catch (err) {
-                console.warn('Ошибка загрузки московской части:', err)
-            }
-
-            // =========================
-            // 🟠 ОБЛАСТНАЯ ЧАСТЬ
-            // =========================
-            try {
-                const response = await fetch('/data/losiny_ostrov_oblast.geojson')
-                const oblastData = await response.json()
-
-                map.current.addSource('losiny-oblast', {
-                    type: 'geojson',
-                    data: oblastData,
-                })
-
-                map.current.addLayer({
-                    id: 'losiny-oblast-fill',
-                    type: 'fill',
-                    source: 'losiny-oblast',
-                    paint: {
-                        'fill-color': '#ff9800',
-                        'fill-opacity': 0.35
-                    }
-                })
-
-                map.current.addLayer({
-                    id: 'losiny-oblast-line',
-                    type: 'line',
-                    source: 'losiny-oblast',
-                    paint: {
-                        'line-color': '#ef6c00',
-                        'line-width': 2,
-                        'line-opacity': 0.9
-                    }
-                })
-
-            } catch (err) {
-                console.warn('Ошибка загрузки областной части:', err)
+            for (const layer of allLayers) {
+                await loadGeoJSONLayer(layer)
             }
         })
     }, [])
 
+    // =========================
+    // GEOLOCATION MARKER
+    // =========================
     useEffect(() => {
         if (!map.current || !location) return
 
